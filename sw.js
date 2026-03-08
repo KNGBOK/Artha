@@ -1,8 +1,8 @@
 const CACHE_NAME = 'artha-v2';
 const PRECACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  './',
+  './index.html',
+  './manifest.json'
 ];
 
 self.addEventListener('install', event => {
@@ -23,7 +23,7 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   // Always go to network for API calls
-  if (event.request.url.includes('api.anthropic.com') ||
+  if (event.request.url.includes('generativelanguage.googleapis.com') ||
       event.request.url.includes('fonts.googleapis.com') ||
       event.request.url.includes('cdnjs.cloudflare.com')) {
     event.respondWith(fetch(event.request));

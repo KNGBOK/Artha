@@ -12,9 +12,9 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
 html,body,#app{height:100%;overflow:hidden;background:#0C0F14;color:#D4D0C8;font-family:'Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700&display=swap');
 .root{height:100%;display:flex;flex-direction:column}
 .hdr{padding:12px 16px;border-bottom:1px solid rgba(201,165,92,.12);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,#12161D,#0C0F14);flex-shrink:0}
 .logo{display:flex;align-items:center;gap:9px}
@@ -125,28 +125,48 @@ function App(){
   const[inp,setInp]=useState("");
   const[busy,setBusy]=useState(false);
   const[home,setHome]=useState(true);
+  const[apiKey,setApiKey]=useState(()=>{try{return localStorage.getItem("artha_key")||"";}catch(e){return "";}});
+  const[showSettings,setShowSettings]=useState(false);
+  const[keyInput,setKeyInput]=useState("");
   const end=useRef(null);
   const ta=useRef(null);
 
   useEffect(()=>{end.current?.scrollIntoView({behavior:"smooth"});},[msgs,busy]);
 
+  const saveKey=()=>{
+    const k=keyInput.trim();
+    if(!k)return;
+    setApiKey(k);setShowSettings(false);
+    try{localStorage.setItem("artha_key",k);}catch(e){}
+  };
+
   const send=async(text)=>{
     if(!text.trim()||busy)return;
+    if(!apiKey){setShowSettings(true);setKeyInput("");return;}
     const um={role:"user",content:text.trim()};
     const all=[...msgs,um];
     setMsgs(all);setInp("");setHome(false);setBusy(true);
     if(ta.current)ta.current.style.height="auto";
     try{
-      const r=await fetch("https://api.anthropic.com/v1/messages",{
+      // Build Gemini conversation history
+      const contents=all.map(m=>({
+        role:m.role==="assistant"?"model":"user",
+        parts:[{text:m.content}]
+      }));
+      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,{
         method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4096,system:SYS,
-          messages:all.map(m=>({role:m.role,content:m.content})),
-          tools:[{type:"web_search_20250305",name:"web_search"}]}),
+        body:JSON.stringify({
+          system_instruction:{parts:[{text:SYS}]},
+          contents,
+          tools:[{google_search:{}}],
+          generationConfig:{maxOutputTokens:4096,temperature:0.7}
+        }),
       });
       const d=await r.json();
-      if(d.error){setMsgs([...all,{role:"assistant",content:"Error: "+d.error.message}]);}
+      if(d.error){setMsgs([...all,{role:"assistant",content:"Error: "+d.error.message+(d.error.status?" ("+d.error.status+")":"")}]);}
       else{
-        const t=(d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n")||"Processing...";
+        const parts=d.candidates?.[0]?.content?.parts||[];
+        const t=parts.filter(p=>p.text).map(p=>p.text).join("\n")||"No response received.";
         setMsgs([...all,{role:"assistant",content:t}]);
       }
     }catch(e){setMsgs([...all,{role:"assistant",content:"Connection error: "+e.message}]);}
@@ -206,7 +226,26 @@ function App(){
         <div><div className="ttl">ARTHA</div><div className="sub">Wealth Intelligence</div></div>
       </div>
       {msgs.length>0&&<button className="nbtn" onClick={()=>{setMsgs([]);setHome(true);setInp("");}}>New</button>}
+      <button className="nbtn" onClick={()=>{setShowSettings(true);setKeyInput(apiKey);}} style={{marginLeft:msgs.length?6:0}}>{apiKey?"\u2699":"Free API Key"}</button>
     </div>
+
+    {showSettings&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:99,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setShowSettings(false)}>
+      <div style={{background:"#181C24",border:"1px solid rgba(201,165,92,.2)",borderRadius:14,padding:24,maxWidth:420,width:"100%"}} onClick={e=>e.stopPropagation()}>
+        <h3 style={{color:"#C9A55C",marginBottom:4,fontSize:16,fontFamily:"'Cormorant Garamond',serif"}}>API Key Setup (Free)</h3>
+        <p style={{color:"rgba(212,208,200,.5)",fontSize:12,marginBottom:16,lineHeight:1.5}}>
+          Get your free key from <b style={{color:"#C9A55C"}}>aistudio.google.com/apikey</b> → Create API Key. No credit card needed. Your key stays on your device only.
+        </p>
+        <input type="password" value={keyInput} onChange={e=>setKeyInput(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter")saveKey();}}
+          placeholder="AIzaSy..."
+          style={{width:"100%",background:"rgba(255,255,255,.04)",border:"1px solid rgba(201,165,92,.2)",borderRadius:8,padding:"11px 14px",color:"#D4D0C8",fontSize:13,fontFamily:"monospace",outline:"none",marginBottom:12}}/>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={saveKey} style={{flex:1,background:"linear-gradient(135deg,#C9A55C,#A88532)",color:"#0C0F14",border:"none",borderRadius:8,padding:"10px",cursor:"pointer",fontWeight:600,fontSize:13}}>Save</button>
+          <button onClick={()=>setShowSettings(false)} style={{flex:1,background:"rgba(255,255,255,.05)",color:"#D4D0C8",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"10px",cursor:"pointer",fontSize:13}}>Cancel</button>
+        </div>
+        {apiKey&&<button onClick={()=>{setApiKey("");setKeyInput("");try{localStorage.removeItem("artha_key");}catch(e){}}} style={{width:"100%",marginTop:8,background:"none",border:"1px solid rgba(255,80,80,.3)",color:"rgba(255,80,80,.7)",borderRadius:8,padding:"8px",cursor:"pointer",fontSize:11}}>Remove Saved Key</button>}
+      </div>
+    </div>}
 
     <div className="chat">
       {home&&msgs.length===0&&<div className="home">
@@ -217,6 +256,10 @@ function App(){
           <span className="ae">{a.e}</span><span className="al">{a.l}</span></button>)}
         </div>
         <div className="hint">Tap an action or type any financial query below</div>
+        {!apiKey&&<div style={{textAlign:"center",padding:"10px 16px",background:"rgba(201,165,92,.08)",borderRadius:10,margin:"8px auto",maxWidth:400}}>
+          <p style={{color:"#C9A55C",fontSize:12,marginBottom:8}}>Get your free API key from Google AI Studio to start</p>
+          <button onClick={()=>{setShowSettings(true);setKeyInput("");}} style={{background:"linear-gradient(135deg,#C9A55C,#A88532)",color:"#0C0F14",border:"none",borderRadius:7,padding:"8px 20px",cursor:"pointer",fontWeight:600,fontSize:12}}>Set Free API Key</button>
+        </div>}
       </div>}
 
       {msgs.map((m,i)=><div key={i} className={"mw "+(m.role==="user"?"u":"a")}>
@@ -238,7 +281,7 @@ function App(){
         placeholder="Ask about taxes, stocks, portfolio, regulations..."/>
       <button className={"sbtn "+(ok?"on":"off")} onClick={()=>send(inp)} disabled={!ok}>{"\u2191"}</button>
     </div>
-    <div className="disc">Not financial advice. Verify with SEBI-registered advisor & CA before acting.</div>
+    <div className="disc">Not financial advice. Powered by Gemini + Google Search. Verify with SEBI-registered advisor & CA.</div>
     </div>
   </div>);
 }
