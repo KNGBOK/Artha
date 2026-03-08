@@ -1,9 +1,5 @@
-const CACHE_NAME = 'artha-v2';
-const PRECACHE = [
-  './',
-  './index.html',
-  './manifest.json'
-];
+const CACHE_NAME = 'artha-v3';
+const PRECACHE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -22,14 +18,19 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Always go to network for API calls
-  if (event.request.url.includes('generativelanguage.googleapis.com') ||
-      event.request.url.includes('fonts.googleapis.com') ||
+  if (event.request.url.includes('fonts.googleapis.com') ||
       event.request.url.includes('cdnjs.cloudflare.com')) {
-    event.respondWith(fetch(event.request));
+    event.respondWith(
+      caches.match(event.request).then(cached => cached || 
+        fetch(event.request).then(response => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          return response;
+        })
+      )
+    );
     return;
   }
-  // Cache-first for app shell
   event.respondWith(
     caches.match(event.request).then(cached => cached || fetch(event.request))
   );

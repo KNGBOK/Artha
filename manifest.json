@@ -1,7 +1,7 @@
 {
   "name": "ARTHA - Wealth Intelligence",
   "short_name": "ARTHA",
-  "description": "AI-powered Indian wealth intelligence system. Tax computation, portfolio analytics, live market data.",
+  "description": "Indian wealth intelligence system. Tax calculator, portfolio tracker, risk scoring. 100% offline, zero cost.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
@@ -11,30 +11,10 @@
   "categories": ["finance", "business"],
   "lang": "en",
   "icons": [
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
   ],
   "prefer_related_applications": false
 }
